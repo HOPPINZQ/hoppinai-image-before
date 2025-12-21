@@ -1,0 +1,7 @@
+{
+  "name": "ChronosLens - AI Time Traveler",
+  "description": "An AI-powered application that predicts past and future appearances from a single photo using Gemini's advanced image editing capabilities.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
