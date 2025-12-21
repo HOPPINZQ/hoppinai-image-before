@@ -7,6 +7,8 @@ import { ShareModal } from './components/ShareModal';
 import { travelInTime } from './services/geminiService';
 import { SessionState, TimeTravelResult } from './types';
 
+const STORAGE_KEY = 'chronos_lens_session';
+
 const PROCESSING_STEPS = [
   "Analyzing facial landmarks...",
   "Identifying unique identifiers...",
@@ -19,22 +21,69 @@ const PROCESSING_STEPS = [
 ];
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<SessionState>({
-    originalImage: null,
-    currentAge: 20,
-    results: {},
-    isProcessing: false,
-    error: null,
+  // Initialize state from localStorage if available
+  const [session, setSession] = useState<SessionState>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          isProcessing: false,
+          error: null
+        };
+      } catch (e) {
+        console.error("Failed to parse saved session", e);
+      }
+    }
+    return {
+      originalImage: null,
+      currentAge: 20,
+      results: {},
+      isProcessing: false,
+      error: null,
+    };
   });
   
   const [selectedBatch, setSelectedBatch] = useState<number[]>([]);
-  const [activeResultKey, setActiveResultKey] = useState<string | null>(null);
+  const [activeResultKey, setActiveResultKey] = useState<string | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const keys = Object.keys(parsed.results || {});
+        return keys.length > 0 ? keys[keys.length - 1] : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [viewMode, setViewMode] = useState<'focus' | 'grid'>('focus');
-  const [showPrivacy, setShowPrivacy] = useState(true);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Persistence effect: save to localStorage whenever session changes
+  useEffect(() => {
+    if (session.originalImage) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          originalImage: session.originalImage,
+          currentAge: session.currentAge,
+          results: session.results
+        }));
+      } catch (e) {
+        console.warn("Storage limit reached, could not save session.", e);
+        // If storage is full, we might want to prune results, but for now we just fail silently
+      }
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [session.originalImage, session.currentAge, session.results]);
+
+  // Handle step cycling for loading state
   useEffect(() => {
     let interval: number | undefined;
     if (session.isProcessing) {
@@ -110,6 +159,7 @@ const App: React.FC = () => {
   };
 
   const reset = () => {
+    localStorage.removeItem(STORAGE_KEY);
     setSession({
       originalImage: null,
       currentAge: 20,
@@ -421,6 +471,12 @@ const App: React.FC = () => {
       {showPrivacy && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
           <div className="glass-panel max-w-lg w-full rounded-[40px] p-10 space-y-8 animate-in zoom-in-95 duration-300 relative border border-white/10 shadow-2xl">
+            <button 
+              onClick={() => setShowPrivacy(false)}
+              className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white transition-colors"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
             <div className="flex items-center gap-5">
               <div className="p-4 bg-blue-600 rounded-3xl">
                 <ShieldCheck className="w-10 h-10 text-white" />
@@ -443,7 +499,7 @@ const App: React.FC = () => {
                 </li>
                 <li className="flex gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                  Processing history is local to your current session.
+                  Processing history is local to your current session and stored in your browser.
                 </li>
               </ul>
             </div>
