@@ -125,7 +125,7 @@ const App: React.FC = () => {
       
       for (const age of targetAges) {
         const direction = age >= 0 ? 'future' : 'past';
-        const resultImageUrl = await travelInTime(
+        const { imageUrl, prompt } = await travelInTime(
           session.originalImage,
           age,
           direction
@@ -135,8 +135,8 @@ const App: React.FC = () => {
         newResults[resultKey] = {
           age,
           direction,
-          imageUrl: resultImageUrl,
-          prompt: ''
+          imageUrl,
+          prompt
         };
         
         // Progressively update UI

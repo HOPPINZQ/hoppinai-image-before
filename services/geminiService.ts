@@ -7,7 +7,7 @@ export const travelInTime = async (
   base64Image: string,
   years: number,
   direction: 'past' | 'future'
-): Promise<string> => {
+): Promise<{ imageUrl: string; prompt: string }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // Clean up base64 string if it contains prefix
@@ -39,11 +39,14 @@ export const travelInTime = async (
 
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+        return {
+          imageUrl: `data:image/png;base64,${part.inlineData.data}`,
+          prompt: prompt
+        };
       }
     }
 
-    throw new Error("Could not find image in model response.");
+    throw new Error("Could find image in model response.");
   } catch (error: any) {
     console.error("Time travel error:", error);
     throw new Error(error.message || "An error occurred during aging simulation.");
